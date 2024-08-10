@@ -1,4 +1,6 @@
-use core::fmt::{self, Result, Write};
+use core::fmt;
+use core::format_args;
+use core::iter::Iterator;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
@@ -118,8 +120,8 @@ impl Writer {
     }
 }
 
-impl Write for Writer {
-    fn write_str(&mut self, s: &str) -> Result {
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
         self.write_string(s);
         Ok(())
     }
@@ -140,4 +142,26 @@ macro_rules! println {
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     WRITER.lock().write_fmt(args).unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test_case]
+    fn test_println_many() {
+        for _ in 0..200 {
+            println!("test_println_many output");
+        }
+    }
+
+    #[test_case]
+    fn test_println_output() {
+        let s = "Some test string that fits on a single line";
+        println!("{}", s);
+        for (i, c) in s.chars().enumerate() {
+            let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            assert_eq!(char::from(screen_char.ascii_character), c);
+        }
+    }
 }
