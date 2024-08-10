@@ -1,5 +1,4 @@
 use core::fmt;
-use core::format_args;
 use core::iter::Iterator;
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -149,14 +148,14 @@ mod tests {
     use super::*;
 
     #[test_case]
-    fn test_println_many() {
+    fn println_many() {
         for _ in 0..200 {
             println!("test_println_many output");
         }
     }
 
     #[test_case]
-    fn test_println_output() {
+    fn println_output() {
         let s = "Some test string that fits on a single line";
         println!("{}", s);
         for (i, c) in s.chars().enumerate() {
