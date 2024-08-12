@@ -3,6 +3,7 @@ use core::iter::Iterator;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
+use x86_64::instructions::interrupts;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,7 +114,7 @@ impl Writer {
             color_code: self.color_code,
         };
 
-        (0..=self.column_position).for_each(|col| {
+        (0..=self.column_position.min(BUFFER_WIDTH - 1)).for_each(|col| {
             self.buffer.chars[row][col].write(blank);
         });
     }
@@ -140,12 +141,16 @@ macro_rules! println {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::fmt::Write;
 
     #[test_case]
     fn println_many() {
@@ -158,9 +163,14 @@ mod tests {
     fn println_output() {
         let s = "Some test string that fits on a single line";
         println!("{}", s);
-        for (i, c) in s.chars().enumerate() {
-            let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
-            assert_eq!(char::from(screen_char.ascii_character), c);
-        }
+        interrupts::without_interrupts(|| {
+            let mut writer = WRITER.lock();
+            writeln!(writer, "\n{}", s).expect("writeln failed");
+
+            for (i, c) in s.chars().enumerate() {
+                let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+                assert_eq!(char::from(screen_char.ascii_character), c);
+            }
+        });
     }
 }

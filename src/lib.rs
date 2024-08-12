@@ -31,7 +31,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 }
 
 pub trait Testable {
-    fn run(&self) -> ();
+    fn run(&self);
 }
 
 impl<T> Testable for T
@@ -78,6 +78,14 @@ fn panic(info: &PanicInfo) -> ! {
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    unsafe { interrupts::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
+}
+
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 #[cfg(test)]
@@ -86,9 +94,4 @@ mod tests {
     fn trivial_assertion() {
         assert_eq!(1, 1);
     }
-
-    // #[test_case]
-    // fn failing_assertion() {
-    //     assert_eq!(2, 1);
-    // }
 }
